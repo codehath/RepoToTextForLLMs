@@ -110,6 +110,7 @@ binary_extensions = [
     ".xpi",
     ".lockb",
     "package-lock.json",
+    "pnpm-lock.yaml",
     ".svg",
     ".eot",
     ".otf",
@@ -317,7 +318,7 @@ def get_repo_contents(repo_url):
     print(f"\nFetching file contents for: {repo_name}")
     file_contents = get_file_contents_iteratively(repo)
 
-    instructions = instructions = get_instructions(repo_name)
+    instructions = get_instructions("instructions-prompt.txt", repo_name)
 
     return repo_name, instructions, readme_content, repo_structure, file_contents
 
@@ -338,7 +339,7 @@ def get_local_repo_contents(directory_path):
     print(f"\nFetching file contents for: {repo_name}")
     file_contents = get_local_file_contents_iteratively(directory_path)
 
-    instructions = get_instructions(repo_name)
+    instructions = get_instructions("instructions-prompt.txt", repo_name)
 
     return repo_name, instructions, readme_content, repo_structure, file_contents
 
@@ -397,30 +398,11 @@ def get_local_file_contents_iteratively(directory_path):
 
 
 ## -------------------------------------------------------------------------
-def get_prompt(prompt_path):
+def get_instructions(prompt_path, repo_name):
     with open(prompt_path, "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def get_instructions(repo_name):
-    """
-    Generate instructions for analyzing a local directory.
-    """
-    instructions = f"Prompt: Analyze the {repo_name} repository to understand its structure, purpose, and functionality. Follow these steps to study the codebase:\n\n"
-    instructions += "1. Read the README file to gain an overview of the project, its goals, and any setup instructions.\n\n"
-    instructions += "2. Examine the repository structure to understand how the files and directories are organized.\n\n"
-    instructions += "3. Identify the main entry point of the application (e.g., main.py, app.py, index.js) and start analyzing the code flow from there.\n\n"
-    instructions += "4. Study the dependencies and libraries used in the project to understand the external tools and frameworks being utilized.\n\n"
-    instructions += "5. Analyze the core functionality of the project by examining the key modules, classes, and functions.\n\n"
-    instructions += "6. Look for any configuration files (e.g., config.py, .env) to understand how the project is configured and what settings are available.\n\n"
-    instructions += "7. Investigate any tests or test directories to see how the project ensures code quality and handles different scenarios.\n\n"
-    instructions += "8. Review any documentation or inline comments to gather insights into the codebase and its intended behavior.\n\n"
-    instructions += "9. Identify any potential areas for improvement, optimization, or further exploration based on your analysis.\n\n"
-    instructions += "10. Provide a summary of your findings, including the project's purpose, key features, and any notable observations or recommendations.\n\n"
-    instructions += (
-        "Use the files and contents provided below to complete this analysis:\n\n"
-    )
-    return instructions
+        instructions = f.read()
+        instructions.replace("##REPO_NAME##", repo_name)
+        return instructions
 
 
 ## -------------------------------------------------------------------------
