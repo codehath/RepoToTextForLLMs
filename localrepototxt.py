@@ -195,7 +195,6 @@ binary_extensions = [
 ]
 
 
-## -------------------------------------------------------------------------
 def get_readme_content(repo):
     """
     Retrieve the content of the README file.
@@ -222,10 +221,7 @@ def get_local_readme_content(directory_path):
         return "README not found."
 
 
-## -------------------------------------------------------------------------
-
-
-def traverse_repo_iteratively(repo):
+def get_structure_iteratively(repo):
     """
     Traverse the repository iteratively to avoid recursion limits for large repositories.
     """
@@ -245,6 +241,24 @@ def traverse_repo_iteratively(repo):
                     )
             else:
                 structure += f"{path}/{content.name}\n"
+    return structure
+
+
+def get_local_structure(directory_path):
+    """
+    Generate the structure of a local directory.
+    """
+    structure = ""
+    for root, dirs, files in os.walk(directory_path):
+        for dir_name in dirs:
+            dir_path = os.path.join(root, dir_name)
+            relative_path = os.path.relpath(dir_path, directory_path)
+            structure += f"{relative_path}/\n"
+
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            relative_path = os.path.relpath(file_path, directory_path)
+            structure += f"{relative_path}\n"
     return structure
 
 
@@ -295,75 +309,6 @@ def get_file_contents_iteratively(repo):
     return file_contents
 
 
-## -------------------------------------------------------------------------
-def get_repo_contents(repo_url):
-    """
-    Main function to get repository contents.
-    """
-    repo_name = repo_url.split("/")[-1]
-    if not GITHUB_TOKEN:
-        raise ValueError(
-            "Please set the 'GITHUB_TOKEN' environment variable or the 'GITHUB_TOKEN' in the script."
-        )
-    g = Github(GITHUB_TOKEN)
-    repo = g.get_repo(repo_url.replace("https://github.com/", ""))
-
-    print(f"Fetching README for: {repo_name}")
-    readme_content = get_readme_content(repo)
-
-    print(f"\nFetching repository structure for: {repo_name}")
-    repo_structure = f"Repository Structure: {repo_name}\n"
-    repo_structure += traverse_repo_iteratively(repo)
-
-    print(f"\nFetching file contents for: {repo_name}")
-    file_contents = get_file_contents_iteratively(repo)
-
-    instructions = get_instructions("instructions-prompt.txt", repo_name)
-
-    return repo_name, instructions, readme_content, repo_structure, file_contents
-
-
-def get_local_repo_contents(directory_path):
-    """
-    Main function to get local repository contents.
-    """
-    repo_name = directory_path.split("/")[-1]
-
-    print(f"Fetching README for: {repo_name}")
-    readme_content = get_local_readme_content(directory_path)
-
-    print(f"\nFetching repository structure for: {repo_name}")
-    repo_structure = f"Repository Structure: {repo_name}\n"
-    repo_structure += get_local_structure(directory_path)
-
-    print(f"\nFetching file contents for: {repo_name}")
-    file_contents = get_local_file_contents_iteratively(directory_path)
-
-    instructions = get_instructions("instructions-prompt.txt", repo_name)
-
-    return repo_name, instructions, readme_content, repo_structure, file_contents
-
-
-## -------------------------------------------------------------------------
-def get_local_structure(directory_path):
-    """
-    Generate the structure of a local directory.
-    """
-    structure = ""
-    for root, dirs, files in os.walk(directory_path):
-        for dir_name in dirs:
-            dir_path = os.path.join(root, dir_name)
-            relative_path = os.path.relpath(dir_path, directory_path)
-            structure += f"{relative_path}/\n"
-
-        for file_name in files:
-            file_path = os.path.join(root, file_name)
-            relative_path = os.path.relpath(file_path, directory_path)
-            structure += f"{relative_path}\n"
-    return structure
-
-
-## -------------------------------------------------------------------------
 def get_local_file_contents_iteratively(directory_path):
     """
     Generate the contents of files in a local directory.
@@ -397,15 +342,57 @@ def get_local_file_contents_iteratively(directory_path):
     return file_contents
 
 
-## -------------------------------------------------------------------------
 def get_instructions(prompt_path, repo_name):
     with open(prompt_path, "r", encoding="utf-8") as f:
         instructions = f.read()
-        instructions.replace("##REPO_NAME##", repo_name)
+        instructions = instructions.replace("##REPO_NAME##", repo_name)
         return instructions
 
 
-## -------------------------------------------------------------------------
+def set_functions(isLocal):
+    if isLocal:
+        get_readme = get_local_readme_content
+        get_structure = get_local_structure
+        get_files = get_local_file_contents_iteratively
+    else:
+        get_readme = get_readme_content
+        get_structure = get_structure_iteratively
+        get_files = get_file_contents_iteratively
+
+    return get_readme, get_structure, get_files
+
+
+def get_repo_contents(repo_path_or_url, isLocal=False):
+    """
+    Main function to get repository contents.
+    """
+    repo_name = repo_path_or_url.split("/")[-1]
+    if isLocal:
+        repo_or_path = repo_path_or_url
+    else:
+        if not GITHUB_TOKEN:
+            raise ValueError(
+                "Please set the 'GITHUB_TOKEN' environment variable or the 'GITHUB_TOKEN' in the script."
+            )
+        g = Github(GITHUB_TOKEN)
+        repo_or_path = g.get_repo(repo_path_or_url.replace("https://github.com/", ""))
+
+    get_readme, get_structure, get_files = set_functions(isLocal)
+
+    print(f"Fetching README for: {repo_name}")
+    readme_content = get_readme(repo_or_path)
+
+    print(f"\nFetching repository structure for: {repo_name}")
+    repo_structure = f"Repository Structure: {repo_name}\n"
+    repo_structure += get_structure(repo_or_path)
+
+    print(f"\nFetching file contents for: {repo_name}")
+    file_contents = get_files(repo_or_path)
+
+    instructions = get_instructions("instructions-prompt.txt", repo_name)
+
+    return repo_name, instructions, readme_content, repo_structure, file_contents
+
 
 if __name__ == "__main__":
     import argparse
@@ -423,13 +410,13 @@ if __name__ == "__main__":
         directory_path = args.directory
         try:
             repo_name, instructions, readme_content, repo_structure, file_contents = (
-                get_local_repo_contents(directory_path)
+                get_repo_contents(directory_path, True)
             )
         except ValueError as ve:
             print(f"Error: {ve}")
         except Exception as e:
             print(f"An error occurred: {e}")
-            print("Please check the repository URL and try again.")
+            print("Please provide a valid directory path")
     else:
         # No command-line argument provided, prompt user for input
         repo_url = input("Please enter the GitHub repository URL: ")
