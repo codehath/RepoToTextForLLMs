@@ -108,6 +108,7 @@ binary_extensions = [
     ".vcd",
     ".crx",
     ".xpi",
+    ".lock",
     ".lockb",
     "package-lock.json",
     "pnpm-lock.yaml",
@@ -246,10 +247,11 @@ def get_structure_iteratively(repo):
 
 def get_local_structure(directory_path):
     """
-    Generate the structure of a local directory.
+    Generate the structure of a local directory, excluding the .git folder.
     """
     structure = ""
     for root, dirs, files in os.walk(directory_path):
+        dirs[:] = [d for d in dirs if d != ".git"]  # Exclude the .git folder
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
             relative_path = os.path.relpath(dir_path, directory_path)
@@ -311,15 +313,18 @@ def get_file_contents_iteratively(repo):
 
 def get_local_file_contents_iteratively(directory_path):
     """
-    Generate the contents of files in a local directory.
+    Generate the contents of files in a local directory, excluding the .git folder.
     """
     file_contents = ""
     global binary_extensions
 
-    for root, _, files in os.walk(directory_path):
+    for root, dirs, files in os.walk(directory_path):
+        dirs[:] = [d for d in dirs if d != ".git"]  # Exclude the .git folder
         for file_name in files:
             file_path = os.path.join(root, file_name)
             relative_path = os.path.relpath(file_path, directory_path)
+            if relative_path.startswith(".git/"):  # Skip files in the .git folder
+                continue
             file_contents += f"File: {relative_path}\n"
             if any(file_name.endswith(ext) for ext in binary_extensions):
                 file_contents += "Content: Skipped binary file\n\n"
