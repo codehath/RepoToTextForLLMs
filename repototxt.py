@@ -2,6 +2,7 @@ import os
 from github import Github
 from tqdm import tqdm
 from dotenv import load_dotenv
+import pyperclip
 
 load_dotenv()  # Load variables from .env file
 
@@ -425,11 +426,20 @@ def analyze_repo(repo_path_or_url, is_local=False):
         output_filename = f"{repo_name}_contents.txt"
         with open(OUTPUT_DIR + output_filename, "w", encoding="utf-8") as f:
             f.write(instructions)
+            f.write("\n\n")
             f.write(f"README:\n{readme_content}\n\n")
             f.write(repo_structure)
             f.write("\n\n")
             f.write(file_contents)
-        print(f"Repository contents saved to '{output_filename}'.")
+
+        # Combine all extracted content into a single string
+        all_content = f"{instructions}\n\nREADME:\n{readme_content}\n\n{repo_structure}\n\n{file_contents}"
+
+        # Copy the content to clipboard
+        pyperclip.copy(all_content)
+        print(
+            f"Repository contents copied to clipboard and saved to '{output_filename}'."
+        )
     except ValueError as ve:
         print(f"Error: {ve}")
     except Exception as e:
@@ -453,7 +463,7 @@ if __name__ == "__main__":
 
     if args.directory is not None:
         # Command-line argument provided
-        analyze_repo(args.directory, is_local=True)
+        analyze_repo(os.path.realpath(args.directory), is_local=True)
     else:
         # No command-line argument provided, prompt user for input
         repo_url = input("Please enter the GitHub repository URL: ")
