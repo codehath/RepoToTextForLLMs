@@ -6,6 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()  # Load variables from .env file
 
 try:
+    OUTPUT_DIR = os.environ["OUTPUT_DIR"]
+    if OUTPUT_DIR == "DEFAULT":
+        OUTPUT_DIR = ""
+except:
+    OUTPUT_DIR = ""
+
+try:
     GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 except KeyError:
     GITHUB_TOKEN = None
@@ -365,8 +372,8 @@ def get_instructions(prompt_path, repo_name):
         return instructions
 
 
-def set_functions(isLocal):
-    if isLocal:
+def set_functions(is_local):
+    if is_local:
         get_readme = get_local_readme_content
         get_structure = get_local_structure
         get_files = get_local_file_contents_iteratively
@@ -378,12 +385,12 @@ def set_functions(isLocal):
     return get_readme, get_structure, get_files
 
 
-def get_repo_contents(repo_path_or_url, isLocal=False):
+def get_repo_contents(repo_path_or_url, is_local=False):
     """
     Main function to get repository contents.
     """
     repo_name = repo_path_or_url.split("/")[-1]
-    if isLocal:
+    if is_local:
         repo_or_path = repo_path_or_url
     else:
         if not GITHUB_TOKEN:
@@ -393,7 +400,7 @@ def get_repo_contents(repo_path_or_url, isLocal=False):
         g = Github(GITHUB_TOKEN)
         repo_or_path = g.get_repo(repo_path_or_url.replace("https://github.com/", ""))
 
-    get_readme, get_structure, get_files = set_functions(isLocal)
+    get_readme, get_structure, get_files = set_functions(is_local)
 
     print(f"Fetching README for: {repo_name}")
     readme_content = get_readme(repo_or_path)
@@ -416,7 +423,7 @@ def analyze_repo(repo_path_or_url, is_local=False):
             get_repo_contents(repo_path_or_url, is_local)
         )
         output_filename = f"{repo_name}_contents.txt"
-        with open(output_filename, "w", encoding="utf-8") as f:
+        with open(OUTPUT_DIR + output_filename, "w", encoding="utf-8") as f:
             f.write(instructions)
             f.write(f"README:\n{readme_content}\n\n")
             f.write(repo_structure)
