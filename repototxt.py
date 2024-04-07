@@ -3,15 +3,9 @@ from github import Github
 from tqdm import tqdm
 from dotenv import load_dotenv
 import pyperclip
+import sys
 
 load_dotenv()  # Load variables from .env file
-
-try:
-    OUTPUT_DIR = os.environ["OUTPUT_DIR"]
-    if OUTPUT_DIR == "DEFAULT":
-        OUTPUT_DIR = ""
-except:
-    OUTPUT_DIR = ""
 
 try:
     GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
@@ -19,6 +13,19 @@ except KeyError:
     GITHUB_TOKEN = None
     print("Warning: GitHub Personal Access Token not found in environment variables.")
     print("You will only be able to convert local repositories")
+
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "")
+ENABLE_CLIPBOARD = (
+    bool(os.getenv("ENABLE_CLIPBOARD")) and os.getenv("ENABLE_CLIPBOARD") != "0"
+)
+ENABLE_SAVE_TO_FILE = (
+    bool(os.getenv("ENABLE_SAVE_TO_FILE", "1"))
+    and os.getenv("ENABLE_SAVE_TO_FILE") != "0"
+)
+
+if not (ENABLE_CLIPBOARD or ENABLE_SAVE_TO_FILE):
+    print("Error: CLIPBOARD and SAVE TO FILE DISABLED, exiting!")
+    sys.exit(1)
 
 binary_extensions = [
     # Compiled executables and libraries
@@ -423,23 +430,31 @@ def analyze_repo(repo_path_or_url, is_local=False):
         repo_name, instructions, readme_content, repo_structure, file_contents = (
             get_repo_contents(repo_path_or_url, is_local)
         )
-        output_filename = f"{repo_name}_contents.txt"
-        with open(OUTPUT_DIR + output_filename, "w", encoding="utf-8") as f:
-            f.write(instructions)
-            f.write("\n\n")
-            f.write(f"README:\n{readme_content}\n\n")
-            f.write(repo_structure)
-            f.write("\n\n")
-            f.write(file_contents)
+        output_filename = f"{OUTPUT_DIR}{repo_name}-text.txt"
+        # with open(OUTPUT_DIR + output_filename, "w", encoding="utf-8") as f:
+        #     f.write(instructions)
+        #     f.write("\n\n")
+        #     f.write(f"README:\n{readme_content}\n\n")
+        #     f.write(repo_structure)
+        #     f.write("\n\n")
+        #     f.write(file_contents)
 
         # Combine all extracted content into a single string
         all_content = f"{instructions}\n\nREADME:\n{readme_content}\n\n{repo_structure}\n\n{file_contents}"
 
-        # Copy the content to clipboard
-        pyperclip.copy(all_content)
-        print(
-            f"Repository contents copied to clipboard and saved to '{output_filename}'."
-        )
+        if ENABLE_CLIPBOARD:
+            # Combine content and copy to clipboard if enabled
+            all_content = f"{instructions}\n\nREADME:\n{readme_content}\n\n{repo_structure}\n\n{file_contents}"
+            pyperclip.copy(all_content)
+            print(f"Repository contents copied to clipboard")
+
+        if ENABLE_SAVE_TO_FILE:
+            # Combine content and save to file if enabled
+            all_content = f"{instructions}\n\nREADME:\n{readme_content}\n\n{repo_structure}\n\n{file_contents}"
+            with open(output_filename, "w") as f:
+                f.write(all_content)
+            print(f"Repository contents saved to '{output_filename}'.")
+
     except ValueError as ve:
         print(f"Error: {ve}")
     except Exception as e:
