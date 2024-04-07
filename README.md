@@ -21,6 +21,12 @@ To use **RepoToTextForLLMs**, you'll need:
 1. Ensure Python and the required packages are installed:
 
 ```bash
+pip install -r requirements.txt
+```
+
+or
+
+```bash
 pip install PyGithub tqdm python-dotenv
 ```
 

@@ -5,8 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load variables from .env file
 
-# Needs a try clause
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+try:
+    GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+except KeyError:
+    GITHUB_TOKEN = None
+    print("Warning: GitHub Personal Access Token not found in environment variables.")
+    print("You will only be able to convert local repositories")
 
 binary_extensions = [
     # Compiled executables and libraries
@@ -280,6 +284,10 @@ def get_file_contents_iteratively(repo):
                         (f"{path}/{content.name}", repo.get_contents(content.path))
                     )
             else:
+                # Skip the README file
+                if content.name.lower() == "readme.md":
+                    continue
+
                 # Check if the file extension suggests it's a binary file
                 if any(content.name.endswith(ext) for ext in binary_extensions):
                     file_contents += (
@@ -313,7 +321,7 @@ def get_file_contents_iteratively(repo):
 
 def get_local_file_contents_iteratively(directory_path):
     """
-    Generate the contents of files in a local directory, excluding the .git folder.
+    Generate the contents of files in a local directory, excluding the .git folder and README file.
     """
     file_contents = ""
     global binary_extensions
@@ -323,8 +331,11 @@ def get_local_file_contents_iteratively(directory_path):
         for file_name in files:
             file_path = os.path.join(root, file_name)
             relative_path = os.path.relpath(file_path, directory_path)
-            if relative_path.startswith(".git/"):  # Skip files in the .git folder
+
+            # Skip the README file and files in the .git folder
+            if relative_path.startswith(".git/") or file_name.lower() == "readme.md":
                 continue
+
             file_contents += f"File: {relative_path}\n"
             if any(file_name.endswith(ext) for ext in binary_extensions):
                 file_contents += "Content: Skipped binary file\n\n"
@@ -399,6 +410,29 @@ def get_repo_contents(repo_path_or_url, isLocal=False):
     return repo_name, instructions, readme_content, repo_structure, file_contents
 
 
+def analyze_repo(repo_path_or_url, is_local=False):
+    try:
+        repo_name, instructions, readme_content, repo_structure, file_contents = (
+            get_repo_contents(repo_path_or_url, is_local)
+        )
+        output_filename = f"{repo_name}_contents.txt"
+        with open(output_filename, "w", encoding="utf-8") as f:
+            f.write(instructions)
+            f.write(f"README:\n{readme_content}\n\n")
+            f.write(repo_structure)
+            f.write("\n\n")
+            f.write(file_contents)
+        print(f"Repository contents saved to '{output_filename}'.")
+    except ValueError as ve:
+        print(f"Error: {ve}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        if is_local:
+            print("Please provide a valid directory path.")
+        else:
+            print("Please check the repository URL and try again.")
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -412,40 +446,8 @@ if __name__ == "__main__":
 
     if args.directory is not None:
         # Command-line argument provided
-        directory_path = args.directory
-        try:
-            repo_name, instructions, readme_content, repo_structure, file_contents = (
-                get_repo_contents(directory_path, True)
-            )
-        except ValueError as ve:
-            print(f"Error: {ve}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            print("Please provide a valid directory path")
+        analyze_repo(args.directory, is_local=True)
     else:
         # No command-line argument provided, prompt user for input
         repo_url = input("Please enter the GitHub repository URL: ")
-        try:
-            repo_name, instructions, readme_content, repo_structure, file_contents = (
-                get_repo_contents(repo_url)
-            )
-        except ValueError as ve:
-            print(f"Error: {ve}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            print("Please check the repository URL and try again.")
-
-    try:
-        output_filename = f"{repo_name}_contents.txt"
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(instructions)
-            f.write(f"README:\n{readme_content}\n\n")
-            f.write(repo_structure)
-            f.write("\n\n")
-            f.write(file_contents)
-        print(f"Repository contents saved to '{output_filename}'.")
-    except ValueError as ve:
-        print(f"Error: {ve}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Please check the repository URL and try again.")
+        analyze_repo(repo_url)
