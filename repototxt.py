@@ -4,6 +4,7 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 import pyperclip
 import sys
+import datetime
 
 load_dotenv()  # Load variables from .env file
 
@@ -213,6 +214,12 @@ binary_extensions = [
     ".gitignore",
     ".gitkeep",
 ]
+
+
+def get_timestamp():
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    return timestamp
 
 
 def get_readme_content(repo):
@@ -450,10 +457,7 @@ def analyze_repo(repo_path_or_url, is_local=False):
 
         if ENABLE_SAVE_TO_FILE:
             # Combine content and save to file if enabled
-            all_content = f"{instructions}\n\nREADME:\n{readme_content}\n\n{repo_structure}\n\n{file_contents}"
-            with open(output_filename, "w") as f:
-                f.write(all_content)
-            print(f"Repository contents saved to '{output_filename}'.")
+            save_to_file_with_timestamp(all_content, repo_name)
 
     except ValueError as ve:
         print(f"Error: {ve}")
@@ -463,6 +467,14 @@ def analyze_repo(repo_path_or_url, is_local=False):
             print("Please provide a valid directory path.")
         else:
             print("Please check the repository URL and try again.")
+
+
+def save_to_file_with_timestamp(content, repo_name):
+    timestamp = get_timestamp()
+    output_filename = f"{OUTPUT_DIR}{repo_name}_{timestamp}-text.txt"
+    with open(output_filename, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"Repository contents saved to '{output_filename}' with timestamp.")
 
 
 if __name__ == "__main__":
